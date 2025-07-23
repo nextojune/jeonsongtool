@@ -1,0 +1,4 @@
+streamlit>=1.20.0
+mammoth
+beautifulsoup4
+requests
