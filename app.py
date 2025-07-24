@@ -50,6 +50,8 @@ def parse_html_blocks(html):
     return [tag for tag in soup.find_all(recursive=False) if tag.name in ["h1", "h2", "h3", "p", "ul", "ol", "hr", "table", "img"]]
 
 def convert_tag_text_with_links(tag):
+    if not hasattr(tag, 'contents'):
+        return str(tag)
     parts = []
     for content in tag.contents:
         if isinstance(content, str):
@@ -68,7 +70,7 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     def walk_list(tag, depth):
         items = []
         for li in tag.find_all("li", recursive=False):
-            inner_text = convert_tag_text_with_links(li.find(text=True, recursive=False) or "")
+            inner_text = convert_tag_text_with_links(li)
             bullet = "  " * depth + "- " + inner_text.strip()
             items.append((bullet, None))
             for child in li.find_all(["ul", "ol"], recursive=False):
