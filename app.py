@@ -58,6 +58,8 @@ def convert_tag_text_with_links(tag):
             href = content["href"]
             text = content.get_text(" ", strip=True)
             parts.append(f"[{text}]({href})")
+        else:
+            parts.append(content.get_text(" ", strip=True))
     return ''.join(parts).strip()
 
 def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
@@ -66,13 +68,8 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     def walk_list(tag, depth):
         items = []
         for li in tag.find_all("li", recursive=False):
-            inner_parts = []
-            for content in li.contents:
-                if getattr(content, "name", None) in ["ul", "ol"]:
-                    continue
-                inner_parts.append(convert_tag_text_with_links(content) if hasattr(content, "name") else content)
-            text = ''.join(inner_parts).strip()
-            bullet = "  " * depth + "- " + text
+            inner_text = convert_tag_text_with_links(li)
+            bullet = "  " * depth + "- " + inner_text
             items.append((bullet, None))
             for child in li.find_all(["ul", "ol"], recursive=False):
                 items.extend(walk_list(child, depth + 1))
@@ -107,3 +104,28 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
             core = txt.lstrip("# ").strip()
             out[0] = (f"# [**{core}**]({link})" if link else f"# **{core}**", None)
     return out
+
+
+# ===== UI Section =====
+st.set_page_config("📄 Word → Discord 변환기", layout="wide")
+st.title("📄 Word → Discord 변환기")
+
+docx = st.file_uploader("📎 .docx 업로드", type=["docx"])
+link = st.text_input("🔗 제목 링크 (선택)")
+use_title = st.checkbox("첫 줄을 제목으로 처리", value=True)
+webhook = st.text_input("📬 Discord Webhook URL")
+
+if docx:
+    html, image_map = convert_docx_to_html(docx)
+    blocks = parse_html_blocks(html)
+    md_blocks = blocks_to_md(blocks, link, use_title, image_map=image_map)
+    md_preview = "\n\n".join(t for t, i in md_blocks if t)
+    html_preview = str(BeautifulSoup(html, "html.parser").prettify())
+
+    tab_html, tab_md = st.tabs(["HTML", "Discord Markdown"])
+
+    with tab_html:
+        st.text_area("HTML", html_preview, height=400)
+
+    with tab_md:
+        st.text_area("Markdown", md_preview, height=400)
