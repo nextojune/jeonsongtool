@@ -125,8 +125,8 @@ def send_discord(webhook, md_blocks):
     st.success("✅ Discord 전송 완료")
 
 # ===== UI Section =====
-st.set_page_config("📄 Word → Discord 전송툴", layout="wide")
-st.title("📄 Word → Discord 전송툴")
+st.set_page_config("📄 Word → Discord 변환기", layout="wide")
+st.title("📄 Word → Discord 변환기")
 
 docx = st.file_uploader("📎 .docx 업로드", type=["docx"])
 link = st.text_input("🔗 제목 링크 (선택)")
