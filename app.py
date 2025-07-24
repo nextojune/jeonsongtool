@@ -39,13 +39,11 @@ def convert_docx_to_html(docx_file):
     return str(soup), image_map
 
 def table_to_md(tbl):
-    rows = [[c.get_text(strip=True) for c in r.find_all(["th", "td"])] for r in tbl.find_all("tr")]
+    rows = [[c.get_text(" ", strip=True) for c in r.find_all(["th", "td"])] for r in tbl.find_all("tr")]
     if not rows: return ""
     widths = [max(len(row[i]) if i < len(row) else 0 for row in rows) for i in range(len(rows[0]))]
     fmt = lambda r: "| " + " | ".join((r[i] if i < len(r) else "").ljust(widths[i]) for i in range(len(widths))) + " |"
-    return "
-\n" + "\n".join(fmt(r) for r in rows) + "\n
-"
+    return "```\n" + "\n".join(fmt(r) for r in rows) + "\n```"
 
 def parse_html_blocks(html):
     soup = BeautifulSoup(html, "html.parser")
@@ -57,14 +55,14 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
         nm = tag.name
         if nm in ["h1", "h2", "h3"]:
             lvl = {"h1": "#", "h2": "##", "h3": "###"}[nm]
-            out.append((f"{lvl} **{tag.get_text(strip=True)}**", None))
+            out.append((f"{lvl} **{tag.get_text(' ', strip=True)}**", None))
         elif nm == "p":
-            txt = tag.get_text(strip=True)
+            txt = tag.get_text(" ", strip=True)
             if txt: out.append((txt, None))
         elif nm in ["ul", "ol"]:
             for li in tag.find_all("li", recursive=True):
                 d = len([p for p in li.parents if p.name in ["ul", "ol"]]) - 1
-                bullet = "  " * d + "- " + li.get_text(strip=True)
+                bullet = "  " * d + "- " + li.get_text(" ", strip=True)
                 out.append((bullet, None))
         elif nm in ["hr", "br"]:
             out.append(("------------------------", None))
@@ -87,8 +85,7 @@ def group_md_blocks_for_sending(md_blocks, limit=1900):
     groups = []
     buf = ""
     for txt, img in md_blocks:
-        if img or txt.startswith("
-"):
+        if img or txt.startswith("```"):
             if buf.strip():
                 groups.append((buf.strip(), None))
                 buf = ""
@@ -156,7 +153,7 @@ def copy_btn(label, uid, text):
     js = f"""
     <script>
     function copy_{btn_id}() {{
-        navigator.clipboard.writeText(atob("{b64}"));
+        navigator.clipboard.writeText(atob(\"{b64}\"));
     }}
     </script>
     <style>
