@@ -66,12 +66,12 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     def walk_list(tag, depth):
         items = []
         for li in tag.find_all("li", recursive=False):
-            inner = []
+            inner_parts = []
             for content in li.contents:
                 if getattr(content, "name", None) in ["ul", "ol"]:
                     continue
-                inner.append(convert_tag_text_with_links(content) if hasattr(content, "name") else content)
-            text = ''.join(inner).strip()
+                inner_parts.append(convert_tag_text_with_links(content) if hasattr(content, "name") else content)
+            text = ''.join(inner_parts).strip()
             bullet = "  " * depth + "- " + text
             items.append((bullet, None))
             for child in li.find_all(["ul", "ol"], recursive=False):
@@ -107,5 +107,3 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
             core = txt.lstrip("# ").strip()
             out[0] = (f"# [**{core}**]({link})" if link else f"# **{core}**", None)
     return out
-
-# 나머지 기존 함수들 (group_md_blocks_for_sending, send_discord, send_discord_embed, copy_btn, Streamlit main 등) 은 그대로 유지됨
