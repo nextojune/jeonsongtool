@@ -70,7 +70,8 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     def walk_list(tag, depth):
         items = []
         for li in tag.find_all("li", recursive=False):
-            inner_text = convert_tag_text_with_links(li)
+            text_nodes = [c for c in li.contents if c.name not in ["ul", "ol"]]
+            inner_text = convert_tag_text_with_links(BeautifulSoup(''.join(str(n) for n in text_nodes), "html.parser"))
             bullet = "  " * depth + "- " + inner_text.strip()
             items.append((bullet, None))
             for child in li.find_all(["ul", "ol"], recursive=False):
