@@ -70,8 +70,9 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     def walk_list(tag, depth):
         items = []
         for li in tag.find_all("li", recursive=False):
-            text_nodes = [c for c in li.contents if c.name not in ["ul", "ol"]]
-            inner_text = convert_tag_text_with_links(BeautifulSoup(''.join(str(n) for n in text_nodes), "html.parser"))
+            text_nodes = [c for c in li.contents if not (hasattr(c, 'name') and c.name in ["ul", "ol"])]
+            inner_html = ''.join(str(n) for n in text_nodes)
+            inner_text = convert_tag_text_with_links(BeautifulSoup(inner_html, "html.parser"))
             bullet = "  " * depth + "- " + inner_text.strip()
             items.append((bullet, None))
             for child in li.find_all(["ul", "ol"], recursive=False):
@@ -108,9 +109,24 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
             out[0] = (f"# [**{core}**]({link})" if link else f"# **{core}**", None)
     return out
 
+def send_discord(webhook, md_blocks):
+    for txt, img_path in md_blocks:
+        payload = {}; files = {}
+        if img_path:
+            fname = os.path.basename(img_path)
+            files["file"] = (fname, open(img_path, "rb"))
+            payload["content"] = txt if txt.strip() else "📎 이미지 첨부"
+        else:
+            payload["content"] = txt
+        res = requests.post(webhook, data=payload, files=files if files else None)
+        if res.status_code not in (200, 204):
+            st.error(f"❌ 전송 실패 - HTTP {res.status_code}: {res.text[:200]}")
+            return
+    st.success("✅ Discord 전송 완료")
+
 # ===== UI Section =====
-st.set_page_config("📄 Word → Discord 변환기", layout="wide")
-st.title("📄 Word → Discord 변환기")
+st.set_page_config("📄 Word → Discord 전송툴", layout="wide")
+st.title("📄 Word → Discord 전송툴")
 
 docx = st.file_uploader("📎 .docx 업로드", type=["docx"])
 link = st.text_input("🔗 제목 링크 (선택)")
@@ -131,3 +147,6 @@ if docx:
 
     with tab_md:
         st.text_area("Markdown", md_preview, height=400)
+        if webhook.strip():
+            if st.button("📤 Discord로 전송"):
+                send_discord(webhook, md_blocks)
