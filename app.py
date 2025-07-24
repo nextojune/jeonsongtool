@@ -49,9 +49,29 @@ def parse_html_blocks(html):
     soup = BeautifulSoup(html, "html.parser")
     return [tag for tag in soup.find_all(recursive=False) if tag.name in ["h1", "h2", "h3", "p", "ul", "ol", "hr", "table", "img"]]
 
+def convert_tag_text_with_links(tag):
+    parts = []
+    for content in tag.descendants:
+        if isinstance(content, str):
+            parts.append(content)
+        elif content.name == "a" and content.get("href"):
+            href = content["href"]
+            text = content.get_text(" ", strip=True)
+            parts.append(f"[{text}]({href})")
+    return ''.join(parts).strip()
+
 def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
     out = []
-    seen = set()
+    def walk_list(tag, depth):
+        items = []
+        for li in tag.find_all("li", recursive=False):
+            text = convert_tag_text_with_links(li)
+            bullet = "  " * depth + "- " + text
+            items.append((bullet, None))
+            for child in li.find_all(["ul", "ol"], recursive=False):
+                items.extend(walk_list(child, depth + 1))
+        return items
+
     for tag in blocks:
         nm = tag.name
         if nm in ["h1", "h2", "h3"]:
@@ -63,13 +83,7 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
             if text:
                 out.append((text, None))
         elif nm in ["ul", "ol"]:
-            for li in tag.find_all("li", recursive=False):
-                d = len([p for p in li.parents if p.name in ["ul", "ol"]]) - 1
-                text = convert_tag_text_with_links(li)
-                bullet = "  " * d + "- " + text
-                if bullet not in seen:
-                    out.append((bullet, None))
-                    seen.add(bullet)
+            out.extend(walk_list(tag, 0))
         elif nm in ["hr", "br"]:
             out.append(("------------------------", None))
         elif nm == "table":
@@ -80,23 +94,13 @@ def blocks_to_md(blocks, link=None, use_title=True, image_map=None):
             if not img_path and src.startswith("data:image/") and image_map:
                 img_path = list(image_map.values())[-1]
             out.append(("[[IMAGE]]", img_path))
+
     if use_title and out:
         txt, img = out[0]
         if img is None:
             core = txt.lstrip("# ").strip()
             out[0] = (f"# [**{core}**]({link})" if link else f"# **{core}**", None)
     return out
-
-def convert_tag_text_with_links(tag):
-    parts = []
-    for content in tag.descendants:
-        if isinstance(content, str):
-            parts.append(content)
-        elif content.name == "a" and content.get("href"):
-            href = content["href"]
-            text = content.get_text(" ", strip=True)
-            parts.append(f"[{text}]({href})")
-    return ''.join(parts).strip()
 
 def group_md_blocks_for_sending(md_blocks, limit=1900):
     groups = []
